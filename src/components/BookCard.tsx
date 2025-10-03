@@ -1,7 +1,9 @@
-import { Badge } from "../components/ui/badge";
-import { Button } from "../components/ui/button";
-import { Card, CardContent, CardFooter } from "../components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Coins, Star, Eye } from "lucide-react";
+import { useCart } from "@/hooks/useCart";
+import { useToast } from "@/hooks/use-toast";
 
 interface BookCardProps {
   title: string;
@@ -24,6 +26,53 @@ const BookCard = ({
   rating, 
   genre 
 }: BookCardProps) => {
+  const { addToCart, userTokens } = useCart();
+  const { toast } = useToast();
+
+  const handleUseTokens = () => {
+    if (userTokens < tokenValue) {
+      toast({
+        title: "Insufficient Tokens",
+        description: `You need ${tokenValue} tokens but only have ${userTokens}`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    addToCart({
+      title,
+      author,
+      image,
+      tokenValue,
+      price,
+      condition,
+      paymentMethod: 'tokens'
+    });
+
+    toast({
+      title: "Added to Cart",
+      description: `${title} added to cart (${tokenValue} tokens)`
+    });
+  };
+
+  const handleBuyWithMoney = () => {
+    if (!price) return;
+
+    addToCart({
+      title,
+      author,
+      image,
+      tokenValue,
+      price,
+      condition,
+      paymentMethod: 'money'
+    });
+
+    toast({
+      title: "Added to Cart", 
+      description: `${title} added to cart (KSH ${(price * 130).toLocaleString()})`
+    });
+  };
   const conditionColors = {
     excellent: "bg-condition-excellent text-white",
     good: "bg-condition-good text-white", 
@@ -75,19 +124,29 @@ const BookCard = ({
             <span className="font-semibold text-token">{tokenValue} tokens</span>
           </div>
           {price && (
-            <span className="text-sm text-muted-foreground">or ${price}</span>
+            <span className="text-sm text-muted-foreground">or KSH {(price * 130).toLocaleString()}</span>
           )}
         </div>
       </CardContent>
 
       <CardFooter className="p-4 pt-0 gap-2">
-        <Button className="flex-1" size="sm">
+        <Button 
+          className="flex-1" 
+          size="sm" 
+          onClick={handleUseTokens}
+          disabled={userTokens < tokenValue}
+        >
           <Coins className="h-4 w-4 mr-2" />
           Use Tokens
         </Button>
         {price && (
-          <Button variant="outline" size="sm" className="flex-1">
-            Buy ${price}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="flex-1"
+            onClick={handleBuyWithMoney}
+          >
+            Buy KSH {(price * 130).toLocaleString()}
           </Button>
         )}
         <Button variant="ghost" size="sm">

@@ -1,8 +1,8 @@
-import Header from "../components/Header";
-import Hero from "../components/Hero";
-import HowItWorks from "../components/HowItWorks";
-import BookCatalog from "../components/BookCatalog";
-import UploadSection from "../components/UploadSection";
+import Header from "@/components/Header";
+import Hero from "@/components/Hero";
+import HowItWorks from "@/components/HowItWorks";
+import BookCatalog from "@/components/BookCatalog";
+import UploadSection from "@/components/UploadSection";
 
 const Index = () => {
   return (

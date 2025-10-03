@@ -1,29 +1,12 @@
-import { useRef, useState } from "react"
-import { Button } from "../components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import { Input } from "../components/ui/input"
-import { Label } from "../components/ui/label"
-import { Textarea } from "../components/ui/textarea"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../components/ui/select"
-import { Camera, Upload, Coins, BookOpen } from "lucide-react"
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Camera, Upload, Coins, BookOpen } from "lucide-react";
 
 const UploadSection = () => {
-  // 🔹 file state + ref
-  const [files, setFiles] = useState<File[]>([])
-  const fileInputRef = useRef<HTMLInputElement | null>(null)
-
-  // 🔹 handle file selection
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) return
-    setFiles(Array.from(event.target.files))
-  }
-
   return (
     <section id="list" className="py-20 bg-secondary/30">
       <div className="container mx-auto px-4">
@@ -92,8 +75,8 @@ const UploadSection = () => {
 
                 <div>
                   <Label htmlFor="description">Description (Optional)</Label>
-                  <Textarea
-                    id="description"
+                  <Textarea 
+                    id="description" 
                     placeholder="Any additional details about the book's condition..."
                     className="h-20"
                   />
@@ -118,40 +101,14 @@ const UploadSection = () => {
                 <div className="space-y-6">
                   <div className="border-2 border-dashed border-border rounded-lg p-8 text-center hover:border-primary transition-colors">
                     <Camera className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                    <p className="text-lg font-medium mb-2">
-                      Upload Book Photos
-                    </p>
+                    <p className="text-lg font-medium mb-2">Upload Book Photos</p>
                     <p className="text-sm text-muted-foreground mb-4">
                       Take clear photos of the cover, spine, and any wear
                     </p>
-
-                    {/* Hidden input */}
-                    <input
-                      type="file"
-                      multiple
-                      accept="image/*"
-                      ref={fileInputRef}
-                      onChange={handleFileSelect}
-                      className="hidden"
-                    />
-                    <Button onClick={() => fileInputRef.current?.click()}>
+                    <Button variant="outline">
                       Choose Files
                     </Button>
                   </div>
-
-                  {/* Thumbnails */}
-                  {files.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2">
-                      {files.map((file) => (
-                        <img
-                          key={file.name}
-                          src={URL.createObjectURL(file)}
-                          alt={file.name}
-                          className="h-24 w-full object-cover rounded"
-                        />
-                      ))}
-                    </div>
-                  )}
 
                   {/* Estimated Value */}
                   <div className="bg-gradient-token rounded-lg p-6 text-center">
@@ -169,9 +126,7 @@ const UploadSection = () => {
 
                   {/* Tips */}
                   <div className="space-y-3 text-sm text-muted-foreground">
-                    <h4 className="font-medium text-foreground">
-                      Photography Tips:
-                    </h4>
+                    <h4 className="font-medium text-foreground">Photography Tips:</h4>
                     <ul className="space-y-1">
                       <li>• Use good lighting</li>
                       <li>• Include front cover, back cover, and spine</li>
@@ -186,7 +141,7 @@ const UploadSection = () => {
         </div>
       </div>
     </section>
-  )
-}
+  );
+};
 
-export default UploadSection
+export default UploadSection;
