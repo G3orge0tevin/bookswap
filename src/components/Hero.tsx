@@ -1,4 +1,4 @@
-import { Button } from "../components/ui/button";
+import { Button } from "@/components/ui/button";
 import { ArrowRight, BookOpen, Coins, Camera } from "lucide-react";
 import heroImage from "@/assets/hero-books.jpg";
 
@@ -27,11 +27,11 @@ const Hero = () => {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-            <Button onClick={() => document.getElementById("list")?.scrollIntoView({ behavior: "smooth" })}size="lg">
-               Start Trading
+            <Button size="lg" className="font-semibold">
+              Start Trading
+              <ArrowRight className="ml-2 h-5 w-5" />
             </Button>
-
-            <Button onClick={() => document.getElementById("browse")?.scrollIntoView({ behavior: "smooth" })}   size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+            <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
               Browse Books
             </Button>
           </div>
