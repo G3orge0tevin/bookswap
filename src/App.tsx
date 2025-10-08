@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import Admin from "./pages/Admin";
 import Cart from "./components/Cart";
 import Checkout from "./pages/Checkout";
+import TokenPurchase from "./pages/TokenPurchase";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
@@ -51,6 +52,14 @@ const App = () => (
                   </ProtectedRoute>
                 } 
               />
+              <Route
+              path="/tokens"
+              element={
+                <ProtectedRoute>
+                  <TokenPurchase />
+                </ProtectedRoute>
+              }
+            />
               {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
               <Route path="*" element={<NotFound />} />
             </Routes>

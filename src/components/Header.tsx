@@ -6,6 +6,8 @@ import { useCart } from "@/hooks/useCart";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useNavigate, Link, useLocation } from "react-router-dom";
 
+
+
 const Header = () => {
   const { user, signOut } = useAuth();
   const { items, userTokens } = useCart();
@@ -29,6 +31,7 @@ const Header = () => {
           <span className="text-2xl font-bold text-primary">BookSwap</span>
         </Link>
         
+
         {!location.pathname.includes('/admin') && (
           <nav className="hidden md:flex items-center gap-6">
             <button 
@@ -60,13 +63,19 @@ const Header = () => {
             </button>
           </nav>
         )}
+        {/* Navigation buttons removed from header - not functional yet */}
 
         <div className="flex items-center gap-4">
           {user && (
-            <Badge variant="secondary" className="bg-gradient-token text-token-foreground">
-              <Coins className="h-4 w-4 mr-1" />
-              {userTokens} Tokens
-            </Badge>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => navigate('/tokens')}
+              className="gap-2 hover:bg-accent hover:text-accent-foreground"
+            >
+              <Coins className="h-4 w-4" />
+              <span className="font-semibold">{userTokens} tokens</span>
+            </Button>
           )}
           
           {user ? (
@@ -88,8 +97,9 @@ const Header = () => {
               
               {isAdmin && (
                 <Link to="/admin">
-                  <Button variant="secondary" size="sm">
-                    <Shield className="h-4 w-4 mr-2" />
+                  <Button variant="secondary" size="sm"
+                   className="gap-2 hover:bg-accent hover:text-accent-foreground">
+                    <Shield className="h-4 w-4 mr-2" /> 
                     Admin
                   </Button>
                 </Link>

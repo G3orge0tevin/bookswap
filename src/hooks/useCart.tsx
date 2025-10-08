@@ -1,5 +1,6 @@
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useAuth } from './useAuth';
+import {supabase} from '@/integrations/supabase/client';
 
 export interface CartItem {
   id: string;
@@ -29,9 +30,39 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 export const CartProvider = ({ children }: { children: ReactNode }) => {
   const [items, setItems] = useState<CartItem[]>([]);
-  const [userTokens, setUserTokens] = useState(120); // Default user tokens
+    const [userTokens, setUserTokens] = useState(0);
   const { user } = useAuth();
 
+  // Fetch user token balance from database
+  useEffect(() => {
+    const fetchTokenBalance = async () => {
+      if (!user) {
+        setUserTokens(0);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('user_tokens')
+          .select('token_balance')
+          .eq('user_id', user.id)
+          .single();
+
+        if (error) {
+          console.error('Error fetching token balance:', error);
+          return;
+        }
+
+        if (data) {
+          setUserTokens(data.token_balance);
+        }
+      } catch (error) {
+        console.error('Error fetching token balance:', error);
+      }
+    };
+
+    fetchTokenBalance();
+  }, [user]);
   const addToCart = (newItem: Omit<CartItem, 'id' | 'quantity'>) => {
     const id = `${newItem.title}-${newItem.paymentMethod}-${Date.now()}`;
     const cartItem: CartItem = { ...newItem, id, quantity: 1 };
