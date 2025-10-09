@@ -10,8 +10,12 @@ const Index = () => {
       <Header />
       <Hero />
       <HowItWorks />
-      <BookCatalog />
-      <UploadSection />
+      <div id="catalog">
+        <BookCatalog />
+      </div>
+      <div id="upload">
+        <UploadSection />
+      </div>
     </div>
   );
 };

@@ -67,15 +67,14 @@ const Header = () => {
 
         <div className="flex items-center gap-4">
           {user && (
-            <Button 
-              variant="outline"
-              size="sm"
+            <Badge 
+              variant="secondary" 
+              className="bg-gradient-token text-token-foreground cursor-pointer hover:opacity-80 transition-opacity"
               onClick={() => navigate('/tokens')}
-              className="gap-2 hover:bg-accent hover:text-accent-foreground"
             >
-              <Coins className="h-4 w-4" />
-              <span className="font-semibold">{userTokens} tokens</span>
-            </Button>
+              <Coins className="h-4 w-4 mr-1" />
+              {userTokens} Tokens
+            </Badge>
           )}
           
           {user ? (

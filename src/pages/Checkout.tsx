@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { Coins, CreditCard, Phone } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const Checkout = () => {
   const { items, getTotalTokens, getTotalMoney, clearCart, userTokens, setUserTokens } = useCart();
@@ -41,18 +42,52 @@ const Checkout = () => {
       return;
     }
 
+    if (!user) return;
+
     setLoading(true);
-    // Simulate token transaction
-    setTimeout(() => {
-      setUserTokens(userTokens - totalTokens);
+    
+    try {
+      // Update token balance in database
+      const { data: currentData, error: fetchError } = await supabase
+        .from('user_tokens')
+        .select('token_balance, total_spent')
+        .eq('user_id', user.id)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      const newBalance = currentData.token_balance - totalTokens;
+      const newTotalSpent = currentData.total_spent + totalTokens;
+
+      const { error: updateError } = await supabase
+        .from('user_tokens')
+        .update({ 
+          token_balance: newBalance,
+          total_spent: newTotalSpent
+        })
+        .eq('user_id', user.id);
+
+      if (updateError) throw updateError;
+
+      // Update local state
+      setUserTokens(newBalance);
       clearCart();
+      
       toast({
         title: "Payment Successful!",
         description: `Used ${totalTokens} tokens for your purchase`
       });
       navigate('/');
+    } catch (error) {
+      console.error('Error processing token payment:', error);
+      toast({
+        title: "Payment Failed",
+        description: "There was an error processing your payment",
+        variant: "destructive"
+      });
+    } finally {
       setLoading(false);
-    }, 2000);
+    }
   };
 
   const handleMoneyPayment = async () => {

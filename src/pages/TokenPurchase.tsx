@@ -1,23 +1,23 @@
 import { useState } from 'react';
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from '@/integrations/supabase/client';
-import { Coins, CreditCard, Phone, Zap } from "lucide-react";
+import { Coins, CreditCard, Phone, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 const TokenPurchase = () => {
   const { user } = useAuth();
   const { userTokens, setUserTokens } = useCart();
   const { toast } = useToast();
   const navigate = useNavigate();
-
-  const [tokenAmount, setTokenAmount] = useState(50);
+  
+  const [tokenAmount, setTokenAmount] = useState<number>(50);
   const [paymentMethod, setPaymentMethod] = useState<'mpesa' | 'card'>('mpesa');
   const [phoneNumber, setPhoneNumber] = useState('');
   const [cardDetails, setCardDetails] = useState({
@@ -30,22 +30,18 @@ const TokenPurchase = () => {
 
   const tokenPackages = [
     { tokens: 50, price: 500, popular: false },
-    { tokens: 100, price: 900, popular: true },
-    { tokens: 250, price: 2000, popular: false },
-    { tokens: 500, price: 3500, popular: false },
+    { tokens: 100, price: 950, popular: true },
+    { tokens: 200, price: 1800, popular: false },
+    { tokens: 500, price: 4250, popular: false }
   ];
-
-  const priceKSH = tokenPackages.find(pkg => pkg.tokens === tokenAmount)?.price || 
-    Math.round(tokenAmount * 8);
 
   const handlePurchase = async () => {
     if (!user) {
       toast({
         title: "Authentication Required",
-        description: "Please sign in to purchase tokens",
+        description: "Please log in to purchase tokens",
         variant: "destructive"
       });
-      navigate('/auth');
       return;
     }
 
@@ -68,62 +64,42 @@ const TokenPurchase = () => {
     }
 
     setLoading(true);
-
+    
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Update token balance in database
-      const { data: currentBalance, error: fetchError } = await supabase
+      // Fetch current token balance
+      const { data: currentData, error: fetchError } = await supabase
         .from('user_tokens')
         .select('token_balance, total_earned')
         .eq('user_id', user.id)
         .single();
 
-      if (fetchError) {
-        // If no record exists, create one
-        const { error: insertError } = await supabase
-          .from('user_tokens')
-          .insert({
-            user_id: user.id,
-            token_balance: tokenAmount,
-            total_earned: tokenAmount
-          });
+      if (fetchError) throw fetchError;
 
-        if (insertError) throw insertError;
-      } else {
-        // Update existing record
-        const { error: updateError } = await supabase
-          .from('user_tokens')
-          .update({
-            token_balance: currentBalance.token_balance + tokenAmount,
-            total_earned: currentBalance.total_earned + tokenAmount
-          })
-          .eq('user_id', user.id);
+      const newBalance = currentData.token_balance + tokenAmount;
+      const newTotalEarned = currentData.total_earned + tokenAmount;
 
-        if (updateError) throw updateError;
-      }
+      // Update token balance in database
+      const { error: updateError } = await supabase
+        .from('user_tokens')
+        .update({ 
+          token_balance: newBalance,
+          total_earned: newTotalEarned
+        })
+        .eq('user_id', user.id);
 
-      // Create transaction record
-      await supabase.from('transactions').insert({
-        user_id: user.id,
-        token_amount: tokenAmount,
-        amount_ksh: priceKSH,
-        transaction_type: 'token_purchase',
-        payment_method: paymentMethod,
-        status: 'completed'
-      });
+      if (updateError) throw updateError;
 
-      setUserTokens(userTokens + tokenAmount);
-
+      // Update local state
+      setUserTokens(newBalance);
+      
       toast({
         title: "Purchase Successful!",
-        description: `You've purchased ${tokenAmount} tokens for KSH ${priceKSH.toLocaleString()}`
+        description: `You've purchased ${tokenAmount} tokens`
       });
-
-      navigate('/');
+      
+      setTimeout(() => navigate('/'), 1500);
     } catch (error) {
-      console.error('Token purchase error:', error);
+      console.error('Error purchasing tokens:', error);
       toast({
         title: "Purchase Failed",
         description: "There was an error processing your purchase",
@@ -134,15 +110,25 @@ const TokenPurchase = () => {
     }
   };
 
+  const selectedPackage = tokenPackages.find(pkg => pkg.tokens === tokenAmount);
+  const totalPrice = selectedPackage?.price || 0;
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">Purchase Tokens</h1>
-          <p className="text-muted-foreground">
-            Buy tokens to trade for books on our platform
-          </p>
-        </div>
+        <Button
+          variant="ghost"
+          onClick={() => navigate('/')}
+          className="mb-4"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Home
+        </Button>
+
+        <h1 className="text-3xl font-bold mb-2">Purchase Tokens</h1>
+        <p className="text-muted-foreground mb-8">
+          Current Balance: <span className="font-semibold text-token">{userTokens} tokens</span>
+        </p>
 
         <div className="grid lg:grid-cols-2 gap-8">
           {/* Token Packages */}
@@ -153,54 +139,36 @@ const TokenPurchase = () => {
                   <Coins className="h-5 w-5 text-token" />
                   Select Token Package
                 </CardTitle>
-                <CardDescription>
-                  Current Balance: {userTokens} tokens
-                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {tokenPackages.map((pkg) => (
-                    <button
-                      key={pkg.tokens}
-                      onClick={() => setTokenAmount(pkg.tokens)}
-                      className={`relative p-4 rounded-lg border-2 transition-all ${
-                        tokenAmount === pkg.tokens
-                          ? 'border-primary bg-primary/5'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      {pkg.popular && (
-                        <div className="absolute -top-2 left-1/2 -translate-x-1/2">
-                          <span className="bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full flex items-center gap-1">
-                            <Zap className="h-3 w-3" />
-                            Popular
-                          </span>
+              <CardContent className="space-y-3">
+                {tokenPackages.map((pkg) => (
+                  <div
+                    key={pkg.tokens}
+                    onClick={() => setTokenAmount(pkg.tokens)}
+                    className={`relative p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                      tokenAmount === pkg.tokens
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    {pkg.popular && (
+                      <span className="absolute -top-2 right-4 bg-primary text-primary-foreground text-xs px-2 py-1 rounded-full">
+                        Popular
+                      </span>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Coins className="h-5 w-5 text-token" />
+                          <span className="font-bold text-lg">{pkg.tokens} Tokens</span>
                         </div>
-                      )}
-                      <div className="text-2xl font-bold mb-1">{pkg.tokens}</div>
-                      <div className="text-sm text-muted-foreground">tokens</div>
-                      <div className="text-lg font-semibold mt-2">
-                        KSH {pkg.price}
+                        <p className="text-sm text-muted-foreground mt-1">
+                          KSH {pkg.price.toLocaleString()}
+                        </p>
                       </div>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="pt-4 border-t">
-                  <Label htmlFor="customAmount">Or enter custom amount</Label>
-                  <Input
-                    id="customAmount"
-                    type="number"
-                    min="10"
-                    max="1000"
-                    value={tokenAmount}
-                    onChange={(e) => setTokenAmount(Number(e.target.value))}
-                    placeholder="Enter token amount"
-                  />
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Price: KSH {priceKSH.toLocaleString()}
-                  </p>
-                </div>
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </div>
@@ -209,12 +177,23 @@ const TokenPurchase = () => {
           <div>
             <Card>
               <CardHeader>
-                <CardTitle>Payment Method</CardTitle>
-                <CardDescription>
-                  Total: KSH {priceKSH.toLocaleString()} for {tokenAmount} tokens
-                </CardDescription>
+                <CardTitle>Payment Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="p-4 bg-muted rounded-lg">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-muted-foreground">Selected Package:</span>
+                    <div className="flex items-center gap-1">
+                      <Coins className="h-4 w-4 text-token" />
+                      <span className="font-semibold">{tokenAmount} tokens</span>
+                    </div>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="font-semibold">Total:</span>
+                    <span className="font-bold text-lg">KSH {totalPrice.toLocaleString()}</span>
+                  </div>
+                </div>
+
                 <RadioGroup value={paymentMethod} onValueChange={(value: 'mpesa' | 'card') => setPaymentMethod(value)}>
                   <div className="flex items-center space-x-2">
                     <RadioGroupItem value="mpesa" id="mpesa" />
@@ -290,14 +269,10 @@ const TokenPurchase = () => {
                 <Button 
                   className="w-full" 
                   onClick={handlePurchase}
-                  disabled={loading || tokenAmount < 10}
+                  disabled={loading}
                 >
                   {loading ? 'Processing...' : `Purchase ${tokenAmount} Tokens`}
                 </Button>
-
-                <p className="text-xs text-muted-foreground text-center">
-                  By purchasing, you agree to our terms and conditions
-                </p>
               </CardContent>
             </Card>
           </div>
