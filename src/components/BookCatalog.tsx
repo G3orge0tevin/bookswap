@@ -1,73 +1,67 @@
-import { Button } from "../components/ui/button";
-import { Input } from "../components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Search, Filter } from "lucide-react";
 import BookCard from "./BookCard";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+
+interface Book {
+  id: string;
+  title: string;
+  author: string;
+  condition: "excellent" | "good" | "fair" | "poor";
+  token_price: number;
+  price_ksh: number;
+  image_url: string | null;
+  genre: string;
+}
 
 const BookCatalog = () => {
-  // Sample book data
-  const books = [
-    {
-      title: "The Seven Husbands of Evelyn Hugo",
-      author: "Taylor Jenkins Reid",
-      condition: "excellent" as const,
-      tokenValue: 45,
-      price: 12.99,
-      image: "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=600&fit=crop",
-      rating: 4.8,
-      genre: "Fiction"
-    },
-    {
-      title: "Atomic Habits",
-      author: "James Clear",
-      condition: "good" as const,
-      tokenValue: 38,
-      price: 15.99,
-      image: "https://images.unsplash.com/photo-1589998059171-988d887df646?w=400&h=600&fit=crop",
-      rating: 4.6,
-      genre: "Self-Help"
-    },
-    {
-      title: "The Silent Patient",
-      author: "Alex Michaelides",
-      condition: "good" as const,
-      tokenValue: 32,
-      price: 10.99,
-      image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=400&h=600&fit=crop",
-      rating: 4.3,
-      genre: "Thriller"
-    },
-    {
-      title: "Educated",
-      author: "Tara Westover",
-      condition: "fair" as const,
-      tokenValue: 28,
-      price: 9.99,
-      image: "https://images.unsplash.com/photo-1512820790803-83ca734da794?w=400&h=600&fit=crop",
-      rating: 4.7,
-      genre: "Memoir"
-    },
-    {
-      title: "The Midnight Library",
-      author: "Matt Haig",
-      condition: "excellent" as const,
-      tokenValue: 40,
-      price: 13.99,
-      image: "https://images.unsplash.com/photo-1506880018603-83d5b814b5a6?w=400&h=600&fit=crop",
-      rating: 4.2,
-      genre: "Fiction"
-    },
-    {
-      title: "Becoming",
-      author: "Michelle Obama",
-      condition: "good" as const,
-      tokenValue: 35,
-      price: 11.99,
-      image: "https://images.unsplash.com/photo-1544716278-ca5e3f4abd8c?w=400&h=600&fit=crop",
-      rating: 4.9,
-      genre: "Biography"
+  const [books, setBooks] = useState<Book[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [conditionFilter, setConditionFilter] = useState("all");
+  const [genreFilter, setGenreFilter] = useState("all");
+  const { toast } = useToast();
+
+  useEffect(() => {
+    loadBooks();
+  }, []);
+
+  const loadBooks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('books')
+        .select('*')
+        .eq('availability_status', 'available')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setBooks((data || []) as Book[]);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load books",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  const filteredBooks = books.filter(book => {
+    const matchesSearch = 
+      book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      book.author.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      book.genre.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesCondition = conditionFilter === "all" || book.condition === conditionFilter;
+    const matchesGenre = genreFilter === "all" || book.genre.toLowerCase() === genreFilter.toLowerCase();
+
+    return matchesSearch && matchesCondition && matchesGenre;
+  });
 
   return (
     <section id="browse" className="py-20">
@@ -88,9 +82,11 @@ const BookCatalog = () => {
             <Input 
               placeholder="Search by title, author, or genre..." 
               className="pl-10"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select>
+          <Select value={conditionFilter} onValueChange={setConditionFilter}>
             <SelectTrigger className="w-full md:w-48">
               <Filter className="h-4 w-4 mr-2" />
               <SelectValue placeholder="Condition" />
@@ -103,7 +99,7 @@ const BookCatalog = () => {
               <SelectItem value="poor">Poor</SelectItem>
             </SelectContent>
           </Select>
-          <Select>
+          <Select value={genreFilter} onValueChange={setGenreFilter}>
             <SelectTrigger className="w-full md:w-48">
               <SelectValue placeholder="Genre" />
             </SelectTrigger>
@@ -119,18 +115,31 @@ const BookCatalog = () => {
         </div>
 
         {/* Book Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {books.map((book, index) => (
-            <BookCard key={index} {...book} />
-          ))}
-        </div>
-
-        {/* Load More */}
-        <div className="text-center mt-12">
-          <Button size="lg" variant="outline">
-            Load More Books
-          </Button>
-        </div>
+        {loading ? (
+          <div className="flex items-center justify-center min-h-96">
+            <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredBooks.length === 0 ? (
+          <div className="text-center text-muted-foreground py-12">
+            No books found. {searchTerm || conditionFilter !== "all" || genreFilter !== "all" ? "Try adjusting your filters." : "Check back soon!"}
+          </div>
+        ) : (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+            {filteredBooks.map((book) => (
+              <BookCard 
+                key={book.id} 
+                title={book.title}
+                author={book.author}
+                condition={book.condition}
+                tokenValue={book.token_price}
+                price={book.price_ksh / 130}
+                image={book.image_url || "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=600&fit=crop"}
+                rating={4.5}
+                genre={book.genre}
+              />
+            ))}
+          </div>
+        )}
       </div>
     </section>
   );

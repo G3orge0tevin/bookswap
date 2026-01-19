@@ -82,9 +82,36 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const signIn = async (email: string, password: string) => {
+    // Check rate limit before attempting sign in
+    const tempUserId = email; // Use email as identifier for rate limiting before auth
+    const windowStart = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    
+    const { data: recentAttempts } = await supabase
+      .from('rate_limit_tracker')
+      .select('id')
+      .eq('user_id', tempUserId)
+      .eq('operation_type', 'login_attempt')
+      .gte('attempted_at', windowStart);
+
+    if (recentAttempts && recentAttempts.length >= 5) {
+      toast({
+        title: "Too Many Attempts",
+        description: "Please wait 15 minutes before trying again.",
+        variant: "destructive",
+      });
+      return { error: new Error('Rate limit exceeded') };
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password,
+    });
+
+    // Record the attempt
+    await supabase.from('rate_limit_tracker').insert({
+      user_id: tempUserId,
+      operation_type: 'login_attempt',
+      success: !error,
     });
 
     if (error) {

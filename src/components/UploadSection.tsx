@@ -10,13 +10,26 @@ import { z } from "zod";
 import { useToast } from "@/components/ui/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { checkRateLimit, recordAttempt, RATE_LIMITS } from "@/lib/rateLimit";
 
 const bookSchema = z.object({
-  title: z.string().trim().min(1, { message: "Title is required" }),
-  author: z.string().trim().min(1, { message: "Author is required" }),
+  title: z.string()
+    .trim()
+    .min(1, { message: "Title is required" })
+    .max(200, { message: "Title is too long" })
+    .transform(val => val.replace(/<[^>]*>/g, '')),
+  author: z.string()
+    .trim()
+    .min(1, { message: "Author is required" })
+    .max(100, { message: "Author is too long" })
+    .transform(val => val.replace(/<[^>]*>/g, '')),
   genre: z.string().min(1, { message: "Genre is required" }),
   condition: z.string().min(1, { message: "Condition is required" }),
-  description: z.string().trim().max(500).optional(),
+  description: z.string()
+    .trim()
+    .max(500, { message: "Description is too long" })
+    .transform(val => val ? val.replace(/<[^>]*>/g, '') : '')
+    .optional(),
 });
 
 const UploadSection = () => {
@@ -52,6 +65,23 @@ const UploadSection = () => {
   const listBook = async () => {
     if (!user) {
       toast({ title: "Sign in required", description: "Please sign in to list a book.", variant: "destructive" });
+      return;
+    }
+
+    // Check rate limit
+    const { allowed, remainingAttempts } = await checkRateLimit({
+      operationType: 'book_upload',
+      userId: user.id,
+      maxAttempts: RATE_LIMITS.BOOK_UPLOAD.maxAttempts,
+      windowMinutes: RATE_LIMITS.BOOK_UPLOAD.windowMinutes,
+    });
+
+    if (!allowed) {
+      toast({ 
+        title: "Rate limit exceeded", 
+        description: `You can only upload ${RATE_LIMITS.BOOK_UPLOAD.maxAttempts} books per hour. Please try again later.`, 
+        variant: "destructive" 
+      });
       return;
     }
 
@@ -92,11 +122,15 @@ const UploadSection = () => {
           condition,
           description: description || null,
           image_url: imageUrl,
+          availability_status: 'pending',
         });
 
       if (insertErr) throw new Error(insertErr.message);
 
-      toast({ title: "Book listed!", description: "Your book is now available for trade." });
+      // Record successful upload
+      await recordAttempt('book_upload', user.id);
+
+      toast({ title: "Book submitted!", description: "Your book is pending admin review." });
       resetForm();
     } catch (e: any) {
       toast({ title: "Could not list book", description: e?.message ?? "Something went wrong.", variant: "destructive" });

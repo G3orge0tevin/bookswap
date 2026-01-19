@@ -1,0 +1,10 @@
+project_id = "eeijleanliaqncmlzsxl"
+
+[functions.admin-approve-book]
+verify_jwt = true
+
+[functions.admin-delete-book]
+verify_jwt = true
+
+[functions.admin-update-book-status]
+verify_jwt = true

@@ -79,10 +79,9 @@ const Checkout = () => {
       });
       navigate('/');
     } catch (error) {
-      console.error('Error processing token payment:', error);
       toast({
         title: "Payment Failed",
-        description: "There was an error processing your payment",
+        description: "Failed to process payment. Please try again.",
         variant: "destructive"
       });
     } finally {

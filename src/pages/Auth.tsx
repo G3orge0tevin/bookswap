@@ -7,6 +7,42 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { BookOpen, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { z } from 'zod';
+import { useToast } from '@/hooks/use-toast';
+
+const signInSchema = z.object({
+  email: z.string().email('Invalid email format').max(255, 'Email must be less than 255 characters'),
+  password: z.string().min(1, 'Password is required')
+});
+
+const signUpSchema = z.object({
+  email: z.string().email('Invalid email format').max(255, 'Email must be less than 255 characters'),
+  password: z.string()
+    .min(12, 'Password must be at least 12 characters')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number')
+    .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character'),
+  confirmPassword: z.string(),
+  firstName: z.string()
+    .trim()
+    .min(1, 'First name is required')
+    .max(50, 'First name must be less than 50 characters')
+    .regex(/^[a-zA-Z\s'-]+$/, 'First name can only contain letters, spaces, hyphens, and apostrophes'),
+  lastName: z.string()
+    .trim()
+    .min(1, 'Last name is required')
+    .max(50, 'Last name must be less than 50 characters')
+    .regex(/^[a-zA-Z\s'-]+$/, 'Last name can only contain letters, spaces, hyphens, and apostrophes'),
+  username: z.string()
+    .trim()
+    .min(3, 'Username must be at least 3 characters')
+    .max(20, 'Username must be less than 20 characters')
+    .regex(/^[a-zA-Z0-9_-]+$/, 'Username can only contain letters, numbers, underscores, and hyphens')
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,10 +55,12 @@ const Auth = () => {
     lastName: '',
     username: ''
   });
+  const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
 
   const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
 
   // Redirect authenticated users to home
   useEffect(() => {
@@ -34,6 +72,26 @@ const Auth = () => {
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationErrors({});
+    
+    // Validate input
+    const result = signInSchema.safeParse(signInData);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          errors[err.path[0].toString()] = err.message;
+        }
+      });
+      setValidationErrors(errors);
+      toast({
+        title: "Validation Error",
+        description: "Please check your input and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     const { error } = await signIn(signInData.email, signInData.password);
@@ -48,8 +106,23 @@ const Auth = () => {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    setValidationErrors({});
     
-    if (signUpData.password !== signUpData.confirmPassword) {
+    // Validate input
+    const result = signUpSchema.safeParse(signUpData);
+    if (!result.success) {
+      const errors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        if (err.path[0]) {
+          errors[err.path[0].toString()] = err.message;
+        }
+      });
+      setValidationErrors(errors);
+      toast({
+        title: "Validation Error",
+        description: "Please check your input and try again.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -98,6 +171,9 @@ const Auth = () => {
                       onChange={(e) => setSignInData({ ...signInData, email: e.target.value })}
                       required
                     />
+                    {validationErrors.email && (
+                      <p className="text-sm text-destructive">{validationErrors.email}</p>
+                    )}
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="signin-password">Password</Label>
@@ -109,6 +185,9 @@ const Auth = () => {
                       onChange={(e) => setSignInData({ ...signInData, password: e.target.value })}
                       required
                     />
+                    {validationErrors.password && (
+                      <p className="text-sm text-destructive">{validationErrors.password}</p>
+                    )}
                   </div>
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Signing In...' : 'Sign In'}
@@ -128,6 +207,9 @@ const Auth = () => {
                         onChange={(e) => setSignUpData({ ...signUpData, firstName: e.target.value })}
                         required
                       />
+                      {validationErrors.firstName && (
+                        <p className="text-sm text-destructive">{validationErrors.firstName}</p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="last-name">Last Name</Label>
@@ -138,6 +220,9 @@ const Auth = () => {
                         onChange={(e) => setSignUpData({ ...signUpData, lastName: e.target.value })}
                         required
                       />
+                      {validationErrors.lastName && (
+                        <p className="text-sm text-destructive">{validationErrors.lastName}</p>
+                      )}
                     </div>
                   </div>
                   
@@ -150,6 +235,10 @@ const Auth = () => {
                       onChange={(e) => setSignUpData({ ...signUpData, username: e.target.value })}
                       required
                     />
+                    {validationErrors.username && (
+                      <p className="text-sm text-destructive">{validationErrors.username}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">3-20 characters, letters, numbers, underscores, and hyphens only</p>
                   </div>
 
                   <div className="space-y-2">
@@ -162,6 +251,9 @@ const Auth = () => {
                       onChange={(e) => setSignUpData({ ...signUpData, email: e.target.value })}
                       required
                     />
+                    {validationErrors.email && (
+                      <p className="text-sm text-destructive">{validationErrors.email}</p>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -174,6 +266,10 @@ const Auth = () => {
                       onChange={(e) => setSignUpData({ ...signUpData, password: e.target.value })}
                       required
                     />
+                    {validationErrors.password && (
+                      <p className="text-sm text-destructive">{validationErrors.password}</p>
+                    )}
+                    <p className="text-xs text-muted-foreground">Min 12 chars with uppercase, lowercase, number, and special character</p>
                   </div>
 
                   <div className="space-y-2">
@@ -186,6 +282,9 @@ const Auth = () => {
                       onChange={(e) => setSignUpData({ ...signUpData, confirmPassword: e.target.value })}
                       required
                     />
+                    {validationErrors.confirmPassword && (
+                      <p className="text-sm text-destructive">{validationErrors.confirmPassword}</p>
+                    )}
                   </div>
 
                   <Button type="submit" className="w-full" disabled={isLoading}>

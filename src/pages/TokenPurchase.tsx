@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Coins, CreditCard, Phone, ArrowLeft } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { checkRateLimit, recordAttempt, RATE_LIMITS } from "@/lib/rateLimit";
 
 const TokenPurchase = () => {
   const { user } = useAuth();
@@ -40,6 +41,23 @@ const TokenPurchase = () => {
       toast({
         title: "Authentication Required",
         description: "Please log in to purchase tokens",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Check rate limit
+    const { allowed, remainingAttempts } = await checkRateLimit({
+      operationType: 'token_purchase',
+      userId: user.id,
+      maxAttempts: RATE_LIMITS.TOKEN_PURCHASE.maxAttempts,
+      windowMinutes: RATE_LIMITS.TOKEN_PURCHASE.windowMinutes,
+    });
+
+    if (!allowed) {
+      toast({
+        title: "Rate limit exceeded",
+        description: `You can only make ${RATE_LIMITS.TOKEN_PURCHASE.maxAttempts} purchases per hour. Please try again later.`,
         variant: "destructive"
       });
       return;
@@ -89,6 +107,9 @@ const TokenPurchase = () => {
 
       if (updateError) throw updateError;
 
+      // Record successful purchase
+      await recordAttempt('token_purchase', user.id);
+
       // Update local state
       setUserTokens(newBalance);
       
@@ -102,7 +123,7 @@ const TokenPurchase = () => {
       console.error('Error purchasing tokens:', error);
       toast({
         title: "Purchase Failed",
-        description: "There was an error processing your purchase",
+        description: "There was an error processing your purchase. Please try again.",
         variant: "destructive"
       });
     } finally {

@@ -14,7 +14,69 @@ export type Database = {
   }
   public: {
     Tables: {
-       profiles: {
+      books: {
+        Row: {
+          author: string
+          availability_status: string
+          condition: string
+          created_at: string
+          description: string | null
+          genre: string
+          id: string
+          image_url: string | null
+          isbn: string | null
+          location: string | null
+          price_ksh: number
+          title: string
+          token_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          author: string
+          availability_status?: string
+          condition: string
+          created_at?: string
+          description?: string | null
+          genre: string
+          id?: string
+          image_url?: string | null
+          isbn?: string | null
+          location?: string | null
+          price_ksh?: number
+          title: string
+          token_price?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          author?: string
+          availability_status?: string
+          condition?: string
+          created_at?: string
+          description?: string | null
+          genre?: string
+          id?: string
+          image_url?: string | null
+          isbn?: string | null
+          location?: string | null
+          price_ksh?: number
+          title?: string
+          token_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "books_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
         Row: {
           account_verified: boolean | null
           avatar_url: string | null
@@ -83,6 +145,91 @@ export type Database = {
         }
         Relationships: []
       }
+      rate_limit_tracker: {
+        Row: {
+          created_at: string | null
+          id: string
+          operation_count: number | null
+          operation_type: string
+          user_id: string | null
+          window_start: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          operation_count?: number | null
+          operation_type: string
+          user_id?: string | null
+          window_start?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          operation_count?: number | null
+          operation_type?: string
+          user_id?: string | null
+          window_start?: string | null
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount_ksh: number | null
+          book_id: string | null
+          created_at: string
+          id: string
+          payment_method: string
+          status: string
+          token_amount: number | null
+          transaction_type: string
+          user_id: string
+        }
+        Insert: {
+          amount_ksh?: number | null
+          book_id?: string | null
+          created_at?: string
+          id?: string
+          payment_method: string
+          status?: string
+          token_amount?: number | null
+          transaction_type: string
+          user_id: string
+        }
+        Update: {
+          amount_ksh?: number | null
+          book_id?: string | null
+          created_at?: string
+          id?: string
+          payment_method?: string
+          status?: string
+          token_amount?: number | null
+          transaction_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "books_public"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string | null
@@ -104,13 +251,104 @@ export type Database = {
         }
         Relationships: []
       }
+      user_tokens: {
+        Row: {
+          created_at: string
+          id: string
+          token_balance: number
+          total_earned: number
+          total_spent: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          token_balance?: number
+          total_earned?: number
+          total_spent?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          token_balance?: number
+          total_earned?: number
+          total_spent?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_tokens_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      books_public: {
+        Row: {
+          author: string | null
+          availability_status: string | null
+          condition: string | null
+          created_at: string | null
+          description: string | null
+          genre: string | null
+          id: string | null
+          image_url: string | null
+          isbn: string | null
+          location: string | null
+          price_ksh: number | null
+          title: string | null
+          token_price: number | null
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          author?: string | null
+          availability_status?: string | null
+          condition?: string | null
+          created_at?: string | null
+          description?: string | null
+          genre?: string | null
+          id?: string | null
+          image_url?: string | null
+          isbn?: string | null
+          location?: string | null
+          price_ksh?: number | null
+          title?: string | null
+          token_price?: number | null
+          updated_at?: string | null
+          user_id?: never
+        }
+        Update: {
+          author?: string | null
+          availability_status?: string | null
+          condition?: string | null
+          created_at?: string | null
+          description?: string | null
+          genre?: string | null
+          id?: string | null
+          image_url?: string | null
+          isbn?: string | null
+          location?: string | null
+          price_ksh?: number | null
+          title?: string | null
+          token_price?: number | null
+          updated_at?: string | null
+          user_id?: never
+        }
+        Relationships: []
+      }
     }
     Functions: {
       get_current_user_role: {
-        Args: Record<PropertyKey, never>
+        Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
       has_role: {
