@@ -63,14 +63,30 @@ const TokenPurchase = () => {
       return;
     }
 
-    if (paymentMethod === 'mpesa' && !phoneNumber) {
+    if (paymentMethod === 'mpesa') {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('mpesa-stk-push', {
+        body: { amount: totalPrice, phoneNumber: phoneNumber }
+      });
+
+      if (error) throw error;
+
       toast({
-        title: "Phone Number Required",
-        description: "Please enter your M-Pesa phone number",
+        title: "STK Push Sent",
+        description: "Please enter your PIN on your phone to complete the purchase.",
+      });
+    } catch (error) {
+      toast({
+        title: "Payment Failed",
+        description: "Could not initiate M-Pesa payment.",
         variant: "destructive"
       });
-      return;
+    } finally {
+      setLoading(false);
     }
+    return;
+  }
 
     if (paymentMethod === 'card' && (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv)) {
       toast({
