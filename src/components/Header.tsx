@@ -1,12 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { BookOpen, Coins, User, LogOut, ShoppingCart, Shield } from "lucide-react";
+import { BookOpen, Coins, User, LogOut, ShoppingCart, Shield, Clock } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-
-
 
 const Header = () => {
   const { user, signOut } = useAuth();
@@ -31,7 +29,6 @@ const Header = () => {
           <span className="text-2xl font-bold text-primary">BookSwap</span>
         </Link>
         
-
         {!location.pathname.includes('/admin') && (
           <nav className="hidden md:flex items-center gap-6">
             <button 
@@ -63,7 +60,6 @@ const Header = () => {
             </button>
           </nav>
         )}
-        {/* Navigation buttons removed from header - not functional yet */}
 
         <div className="flex items-center gap-4">
           {user && (
@@ -93,6 +89,17 @@ const Header = () => {
                   </span>
                 )}
               </Button>
+
+              {/* NEW HISTORY BUTTON */}
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => navigate('/history')}
+                className="hover:bg-accent hover:text-accent-foreground"
+              >
+                <Clock className="h-4 w-4 mr-2" />
+                History
+              </Button>
               
               {isAdmin && (
                 <Link to="/admin">
@@ -106,9 +113,11 @@ const Header = () => {
               
               <div className="flex items-center gap-2">
                 <User className="h-4 w-4" />
-                <span className="text-sm font-medium">Welcome {user?.user_metadata?.first_name || 'back'}!</span>
+                <span className="text-sm font-medium hidden lg:inline-block">
+                  {user?.user_metadata?.first_name || 'My Account'}
+                </span>
               </div>
-              <Button variant="outline" onClick={handleAuthAction}>
+              <Button variant="outline" size="sm" onClick={handleAuthAction}>
                 <LogOut className="h-4 w-4 mr-2" />
                 Sign Out
               </Button>
