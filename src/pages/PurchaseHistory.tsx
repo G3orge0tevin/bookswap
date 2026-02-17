@@ -11,11 +11,14 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Receipt, Calendar, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button"; // Import Button
+import { Loader2, Receipt, Calendar, BookOpen, ArrowLeft } from "lucide-react"; // Import ArrowLeft
 import { format } from "date-fns";
+import { useNavigate } from "react-router-dom"; // Import useNavigate
 
 const PurchaseHistory = () => {
   const { user } = useAuth();
+  const navigate = useNavigate(); // Initialize navigate hook
   const [loading, setLoading] = useState(true);
   const [transactions, setTransactions] = useState<any[]>([]);
 
@@ -57,6 +60,17 @@ const PurchaseHistory = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* --- ADDED: Go Back Home Button --- */}
+      <Button 
+        variant="ghost" 
+        className="mb-6 gap-2 pl-0 hover:pl-2 transition-all"
+        onClick={() => navigate('/')}
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to Home
+      </Button>
+      {/* ---------------------------------- */}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-2xl">
@@ -69,6 +83,13 @@ const PurchaseHistory = () => {
             <div className="text-center py-12 text-muted-foreground">
               <BookOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p>No transactions found yet.</p>
+              <Button 
+                variant="outline" 
+                className="mt-4"
+                onClick={() => navigate('/')}
+              >
+                Browse Books
+              </Button>
             </div>
           ) : (
             <Table>

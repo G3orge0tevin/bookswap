@@ -24,8 +24,7 @@ const AdminDashboard = () => {
     totalTransactions: 0
   });
   const [loading, setLoading] = useState(true);
-  const [tokenAmount, setTokenAmount] = useState('');
-  const [selectedUserId, setSelectedUserId] = useState('');
+  // Token management states removed - handled in TokenManagement component
   const { toast } = useToast();
 
   useEffect(() => {
@@ -112,71 +111,7 @@ const AdminDashboard = () => {
     }
   };
 
-  const addTokensToUser = async () => {
-    if (!selectedUserId || !tokenAmount) {
-      toast({
-        title: "Invalid Input",
-        description: "Please select a user and enter token amount",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    try {
-      const amount = parseInt(tokenAmount);
-      
-      // Check if user already has a token account
-      const { data: existingTokens, error: fetchError } = await supabase
-        .from('user_tokens')
-        .select('*')
-        .eq('user_id', selectedUserId)
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        throw fetchError;
-      }
-
-      if (existingTokens) {
-        // Update existing account by adding tokens
-        const { error } = await supabase
-          .from('user_tokens')
-          .update({ 
-            token_balance: existingTokens.token_balance + amount,
-            total_earned: existingTokens.total_earned + amount
-          })
-          .eq('user_id', selectedUserId);
-
-        if (error) throw error;
-      } else {
-        // Create new token account
-        const { error } = await supabase
-          .from('user_tokens')
-          .insert({
-            user_id: selectedUserId,
-            token_balance: amount,
-            total_earned: amount
-          });
-
-        if (error) throw error;
-      }
-
-      const selectedUser = users.find(u => u.id === selectedUserId);
-      toast({
-        title: "Tokens Added Successfully",
-        description: `Added ${tokenAmount} tokens to ${selectedUser?.display_name || 'user'}`,
-      });
-      
-      setTokenAmount('');
-      setSelectedUserId('');
-      loadDashboardData();
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to add tokens to user",
-        variant: "destructive"
-      });
-    }
-  };
+  // Token management is now handled in the TokenManagement component
 
   const systemActions = [
     { 
@@ -274,98 +209,7 @@ const AdminDashboard = () => {
         </Card>
       </div>
 
-      {/* User Management */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            User Management
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {users.slice(0, 10).map((user) => (
-              <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
-                <div className="flex-1">
-                  <h4 className="font-medium">{user.display_name}</h4>
-                  <p className="text-sm text-muted-foreground">{user.email}</p>
-                  <p className="text-xs text-muted-foreground">
-                    Joined: {new Date(user.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant={user.role === 'admin' ? 'default' : 'secondary'}>
-                    {user.role}
-                  </Badge>
-                  <div className="flex gap-1">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateUserRole(user.id, 'admin')}
-                      disabled={user.role === 'admin'}
-                    >
-                      Make Admin
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateUserRole(user.id, 'user')}
-                      disabled={user.role === 'user'}
-                    >
-                      Make User
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Token Management */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Coins className="h-5 w-5" />
-            Token Management
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="user-select">Select User</Label>
-              <select
-                id="user-select"
-                className="w-full mt-1 px-3 py-2 border rounded-md"
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value)}
-              >
-                <option value="">Choose user...</option>
-                {users.map((user) => (
-                  <option key={user.id} value={user.id}>
-                    {user.display_name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label htmlFor="token-amount">Token Amount</Label>
-              <Input
-                id="token-amount"
-                type="number"
-                placeholder="Enter tokens"
-                value={tokenAmount}
-                onChange={(e) => setTokenAmount(e.target.value)}
-              />
-            </div>
-            <div className="flex items-end">
-              <Button onClick={addTokensToUser} className="w-full">
-                Add Tokens
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Token management is now handled in dedicated TokenManagement component */}
 
       {/* System Actions */}
       <Card>

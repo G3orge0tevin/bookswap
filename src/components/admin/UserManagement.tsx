@@ -63,11 +63,13 @@ const UserManagement = () => {
     }
   };
 
-  const updateUserRole = async (userId: string, newRole: 'user' | 'admin' | 'moderator') => {
+  const updateUserRole = async (userId: string, newRole: 'user' | 'admin') => {
     try {
       const { error } = await supabase
         .from('user_roles')
-        .upsert({ user_id: userId, role: newRole }, { onConflict: 'user_id' });
+        .update({ role: newRole })
+        .eq('user_id', userId);
+
 
       if (error) throw error;
 
@@ -147,15 +149,6 @@ const UserManagement = () => {
                     >
                       <Shield className="h-3 w-3 mr-1" />
                       Admin
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => updateUserRole(user.id, 'moderator')}
-                      disabled={user.role === 'moderator'}
-                    >
-                      <User className="h-3 w-3 mr-1" />
-                      Mod
                     </Button>
                     <Button
                       size="sm"
