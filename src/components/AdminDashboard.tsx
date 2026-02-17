@@ -1,240 +1,232 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAdmin } from "@/hooks/useAdmin";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
+import { 
+  BookOpen, 
+  Users, 
+  CheckCircle2, 
+  Trash2,
+  ShieldAlert,
+  History,
+  User
+} from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { supabase } from '@/integrations/supabase/client';
-import { Users, Settings, BarChart3, Coins, BookOpen, Shield, RefreshCw } from "lucide-react";
-
-interface User {
-  id: string;
-  email: string;
-  display_name: string;
-  created_at: string;
-  role?: string;
-}
+import { supabase } from "@/integrations/supabase/client";
 
 const AdminDashboard = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [stats, setStats] = useState({
-    totalUsers: 0,
-    totalBooks: 0,
-    totalTransactions: 0
-  });
-  const [loading, setLoading] = useState(true);
-  // Token management states removed - handled in TokenManagement component
+  const { isAdmin, loading } = useAdmin();
+  const navigate = useNavigate();
   const { toast } = useToast();
+  
+  const [books, setBooks] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [searchTerm, setSearchTerm] = useState("");
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (!loading && !isAdmin) {
+      navigate("/");
+    }
+    if (isAdmin) {
+      fetchData();
+    }
+  }, [isAdmin, loading, navigate]);
 
-  const loadDashboardData = async () => {
-    setLoading(true);
-    try {
-      // Load users with roles - fix the query structure
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
-        .select('*');
+  const fetchData = async () => {
+    // 1. Fetch Books
+    const { data: booksData } = await supabase
+      .from('books')
+      .select('*')
+      .order('created_at', { ascending: false });
+    
+    // 2. Fetch Users
+    const { data: usersData } = await supabase
+      .from('profiles')
+      .select('*')
+      .order('created_at', { ascending: false });
 
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('*');
+    // 3. Fetch Transactions
+    const { data: txData } = await supabase
+      .from('transactions')
+      .select('*, profiles(first_name, last_name)')
+      .order('created_at', { ascending: false });
 
-      if (!profilesError && profiles) {
-        const usersWithRoles = profiles.map(profile => {
-          const userRole = userRoles?.find(role => role.user_id === profile.id);
-          return {
-            id: profile.id,
-            email: `${profile.first_name?.toLowerCase() || 'user'}.${profile.last_name?.toLowerCase() || profile.id.slice(0, 4)}@bookswap.com`,
-            display_name: profile.display_name || `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Anonymous User',
-            created_at: profile.created_at,
-            role: userRole?.role || 'user'
-          };
-        });
-        setUsers(usersWithRoles);
-        setStats(prev => ({ ...prev, totalUsers: profiles.length }));
-      }
+    if (booksData) setBooks(booksData);
+    if (usersData) setUsers(usersData);
+    if (txData) setTransactions(txData);
+  };
 
-      // Load real book data
-      const { data: books, error: booksError } = await supabase
-        .from('books')
-        .select('*');
+  const handleApproveBook = async (bookId: string) => {
+    const { error } = await supabase
+      .from('books')
+      .update({ status: 'available' })
+      .eq('id', bookId);
 
-      // Load real transaction data
-      const { data: transactions, error: transactionsError } = await supabase
-        .from('transactions')
-        .select('*');
-
-      if (!booksError && books) {
-        setStats(prev => ({ ...prev, totalBooks: books.length }));
-      }
-
-      if (!transactionsError && transactions) {
-        setStats(prev => ({ ...prev, totalTransactions: transactions.length }));
-      }
-
-    } catch (error) {
-      console.error('Dashboard data error:', error);
-      toast({
-        title: "Error Loading Data",
-        description: "Failed to load dashboard data",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading(false);
+    if (error) {
+      toast({ title: "Error", description: "Failed to approve book", variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "Book approved" });
+      fetchData();
     }
   };
 
-  const updateUserRole = async (userId: string, newRole: 'user' | 'admin' | 'moderator') => {
-    try {
-      const { error } = await supabase
-        .from('user_roles')
-        .upsert({ user_id: userId, role: newRole }, { onConflict: 'user_id' });
+  const handleDeleteBook = async (bookId: string) => {
+    const { error } = await supabase
+      .from('books')
+      .delete()
+      .eq('id', bookId);
 
-      if (error) throw error;
-
-      toast({
-        title: "Role Updated",
-        description: `User role updated to ${newRole}`,
-      });
-
-      loadDashboardData(); // Reload data
-    } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update user role",
-        variant: "destructive"
-      });
+    if (error) {
+      toast({ title: "Error", description: "Failed to delete book", variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "Book deleted" });
+      fetchData();
     }
   };
 
-  // Token management is now handled in the TokenManagement component
-
-  const systemActions = [
-    { 
-      name: "Clear All Caches", 
-      icon: RefreshCw, 
-      action: async () => {
-        // Clear browser cache programmatically
-        if ('caches' in window) {
-          const cacheNames = await caches.keys();
-          await Promise.all(cacheNames.map(name => caches.delete(name)));
-        }
-        // Clear localStorage
-        localStorage.clear();
-        sessionStorage.clear();
-        toast({ title: "Cache Cleared", description: "All system caches and storage have been cleared successfully" });
-      }
-    },
-    { 
-      name: "Refresh User Data", 
-      icon: Shield, 
-      action: async () => {
-        await loadDashboardData();
-        toast({ title: "Data Refreshed", description: "All user data has been refreshed from the database" });
-      }
-    },
-    { 
-      name: "Generate Activity Report", 
-      icon: BookOpen, 
-      action: () => {
-        const reportData = {
-          timestamp: new Date().toISOString(),
-          totalUsers: stats.totalUsers,
-          totalBooks: stats.totalBooks,
-          totalTransactions: stats.totalTransactions,
-          activeAdmins: users.filter(u => u.role === 'admin').length
-        };
-        
-        // Create downloadable report
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(reportData, null, 2));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", `bookswap_report_${new Date().toISOString().split('T')[0]}.json`);
-        document.body.appendChild(downloadAnchorNode);
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-        
-        toast({ title: "Report Generated", description: "Activity report has been downloaded successfully" });
-      }
-    },
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-96">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
+  if (loading) return null;
 
   return (
-    <div className="space-y-6">
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Users</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalUsers}</div>
-            <p className="text-xs text-muted-foreground">+{Math.floor(Math.random() * 20 + 5)}% from last month</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Books Available</CardTitle>
-            <BookOpen className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalBooks}</div>
-            <p className="text-xs text-muted-foreground">+{Math.floor(Math.random() * 30 + 10)} new this week</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Transactions</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalTransactions}</div>
-            <p className="text-xs text-muted-foreground">+{Math.floor(Math.random() * 15 + 3)}% from last week</p>
-          </CardContent>
-        </Card>
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <ShieldAlert className="h-8 w-8 text-primary" />
+          Admin Dashboard
+        </h1>
+        <Button onClick={fetchData} variant="outline" size="sm">
+          Refresh Data
+        </Button>
       </div>
 
-      {/* Token management is now handled in dedicated TokenManagement component */}
+      <Tabs defaultValue="books" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-8">
+          <TabsTrigger value="books" className="flex items-center gap-2">
+            <BookOpen className="h-4 w-4" /> Books
+          </TabsTrigger>
+          <TabsTrigger value="users" className="flex items-center gap-2">
+            <Users className="h-4 w-4" /> Users
+          </TabsTrigger>
+          <TabsTrigger value="transactions" className="flex items-center gap-2">
+            <History className="h-4 w-4" /> Transactions
+          </TabsTrigger>
+        </TabsList>
 
-      {/* System Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Settings className="h-5 w-5" />
-            System Actions
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {systemActions.map((action) => (
-              <Button
-                key={action.name}
-                variant="outline"
-                onClick={action.action}
-                className="flex items-center gap-2 p-4 h-auto"
-              >
-                <action.icon className="h-5 w-5" />
-                <span>{action.name}</span>
-              </Button>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+        {/* --- BOOKS TAB --- */}
+        <TabsContent value="books">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Book Management</CardTitle>
+              <Input 
+                placeholder="Search books..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="max-w-xs"
+              />
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {books.filter(b => b.title.toLowerCase().includes(searchTerm.toLowerCase())).map((book) => (
+                  <div key={book.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                    <div>
+                      <h3 className="font-semibold">{book.title}</h3>
+                      <p className="text-sm text-muted-foreground">by {book.author}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <span className={`text-xs px-2 py-0.5 rounded-full capitalize ${
+                          book.status === 'available' ? 'bg-green-100 text-green-800' : 
+                          book.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {book.status}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {book.token_price} Tokens
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      {book.status === 'pending' && (
+                        <Button size="sm" onClick={() => handleApproveBook(book.id)} className="bg-green-600 hover:bg-green-700">
+                          <CheckCircle2 className="h-4 w-4 mr-1" /> Approve
+                        </Button>
+                      )}
+                      <Button size="sm" variant="destructive" onClick={() => handleDeleteBook(book.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {books.length === 0 && <p className="text-center text-muted-foreground py-4">No books found.</p>}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* --- USERS TAB (Cleaned: No Buttons) --- */}
+        <TabsContent value="users">
+          <Card>
+            <CardHeader>
+              <CardTitle>User Management</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {users.map((user) => (
+                  <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div className="flex items-center gap-4">
+                      {/* User Avatar Icon */}
+                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{user.first_name} {user.last_name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          Joined: {new Date(user.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    {/* Right side is completely empty now */}
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* --- TRANSACTIONS TAB --- */}
+        <TabsContent value="transactions">
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Transactions</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {transactions.map((tx) => (
+                  <div key={tx.id} className="flex items-center justify-between p-4 border rounded-lg">
+                    <div>
+                      <p className="font-medium">
+                        {tx.payment_method === 'tokens' 
+                          ? `${tx.token_amount} Tokens` 
+                          : `KSH ${tx.amount_ksh?.toLocaleString()}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {tx.profiles?.first_name || 'User'} • {new Date(tx.created_at).toLocaleDateString()}
+                      </p>
+                    </div>
+                    <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full capitalize">
+                      {tx.status}
+                    </span>
+                  </div>
+                ))}
+                {transactions.length === 0 && <p className="text-center text-muted-foreground py-4">No transactions found.</p>}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+      </Tabs>
     </div>
   );
 };
