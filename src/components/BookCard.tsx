@@ -1,11 +1,20 @@
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardFooter } from "@/components/ui/card";
 import { Coins, Star, Eye } from "lucide-react";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 
 interface BookCardProps {
+  id: string;
   title: string;
   author: string;
   condition: "excellent" | "good" | "fair" | "poor";
@@ -14,9 +23,11 @@ interface BookCardProps {
   image: string;
   rating: number;
   genre: string;
+  description?: string | null;
 }
 
 const BookCard = ({ 
+  id,
   title, 
   author, 
   condition, 
@@ -24,10 +35,12 @@ const BookCard = ({
   price, 
   image, 
   rating, 
-  genre 
+  genre,
+  description,
 }: BookCardProps) => {
   const { addToCart, userTokens } = useCart();
   const { toast } = useToast();
+  const [open, setOpen] = useState(false);
 
   const handleUseTokens = () => {
     if (userTokens < tokenValue) {
@@ -40,6 +53,7 @@ const BookCard = ({
     }
 
     addToCart({
+      bookId: id,
       title,
       author,
       image,
@@ -59,6 +73,7 @@ const BookCard = ({
     if (!price) return;
 
     addToCart({
+      bookId: id,
       title,
       author,
       image,
@@ -81,79 +96,123 @@ const BookCard = ({
   };
 
   return (
-    <Card className="bg-gradient-card border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
-      <div className="relative overflow-hidden rounded-t-lg">
-        <img 
-          src={image} 
-          alt={title}
-          className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
-        />
-        <Badge className={`absolute top-3 left-3 ${conditionColors[condition]} capitalize`}>
-          {condition}
-        </Badge>
-        <Badge variant="secondary" className="absolute top-3 right-3 text-xs">
-          {genre}
-        </Badge>
-      </div>
-      
-      <CardContent className="p-4">
-        <h3 className="font-bold text-lg text-foreground mb-1 line-clamp-2">
-          {title}
-        </h3>
-        <p className="text-muted-foreground mb-3">by {author}</p>
-        
-        <div className="flex items-center gap-2 mb-3">
-          <div className="flex items-center">
-            {[...Array(5)].map((_, i) => (
-              <Star 
-                key={i} 
-                className={`h-4 w-4 ${
-                  i < Math.floor(rating) 
-                    ? 'text-token fill-current' 
-                    : 'text-muted-foreground'
-                }`} 
-              />
-            ))}
-          </div>
-          <span className="text-sm text-muted-foreground">({rating})</span>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Coins className="h-4 w-4 text-token" />
-            <span className="font-semibold text-token">{tokenValue} tokens</span>
-          </div>
-          {price && (
-            <span className="text-sm text-muted-foreground">or KSH {(price * 130).toLocaleString()}</span>
-          )}
-        </div>
-      </CardContent>
-
-      <CardFooter className="p-4 pt-0 gap-2">
-        <Button 
-          className="flex-1" 
-          size="sm" 
-          onClick={handleUseTokens}
-          disabled={userTokens < tokenValue}
+    <>
+      <Card className="bg-gradient-card border-0 shadow-lg hover:shadow-xl transition-all duration-300 group">
+        <div
+          className="relative overflow-hidden rounded-t-lg cursor-pointer"
+          onClick={() => setOpen(true)}
         >
-          <Coins className="h-4 w-4 mr-2" />
-          Use Tokens
-        </Button>
-        {price && (
-          <Button 
-            variant="outline" 
-            size="sm" 
+          <img
+            src={image}
+            alt={title}
+            className="w-full h-64 object-cover group-hover:scale-105 transition-transform duration-300"
+          />
+          <Badge className={`absolute top-3 left-3 ${conditionColors[condition]} capitalize`}>
+            {condition}
+          </Badge>
+          <Badge variant="secondary" className="absolute top-3 right-3 text-xs">
+            {genre}
+          </Badge>
+        </div>
+
+        <CardContent className="p-4 cursor-pointer" onClick={() => setOpen(true)}>
+          <h3 className="font-bold text-lg text-foreground mb-1 line-clamp-2 hover:text-primary transition-colors">
+            {title}
+          </h3>
+          <p className="text-muted-foreground mb-3">by {author}</p>
+
+          <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center">
+              {[...Array(5)].map((_, i) => (
+                <Star
+                  key={i}
+                  className={`h-4 w-4 ${
+                    i < Math.floor(rating)
+                      ? 'text-token fill-current'
+                      : 'text-muted-foreground'
+                  }`}
+                />
+              ))}
+            </div>
+            <span className="text-sm text-muted-foreground">({rating})</span>
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Coins className="h-4 w-4 text-token" />
+              <span className="font-semibold text-token">{tokenValue} tokens</span>
+            </div>
+            {price && (
+              <span className="text-sm text-muted-foreground">or KSH {(price * 130).toLocaleString()}</span>
+            )}
+          </div>
+        </CardContent>
+
+        <CardFooter className="p-4 pt-0 gap-2">
+          <Button
             className="flex-1"
-            onClick={handleBuyWithMoney}
+            size="sm"
+            onClick={handleUseTokens}
+            disabled={userTokens < tokenValue}
           >
-            Buy KSH {(price * 130).toLocaleString()}
+            <Coins className="h-4 w-4 mr-2" />
+            Use Tokens
           </Button>
-        )}
-        <Button variant="ghost" size="sm">
-          <Eye className="h-4 w-4" />
-        </Button>
-      </CardFooter>
-    </Card>
+          {price && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={handleBuyWithMoney}
+            >
+              Buy KSH {(price * 130).toLocaleString()}
+            </Button>
+          )}
+          <Button variant="ghost" size="sm" onClick={() => setOpen(true)}>
+            <Eye className="h-4 w-4" />
+          </Button>
+        </CardFooter>
+      </Card>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-2xl">{title}</DialogTitle>
+            <DialogDescription>by {author}</DialogDescription>
+          </DialogHeader>
+          <div className="grid sm:grid-cols-[180px_1fr] gap-4">
+            <img
+              src={image}
+              alt={title}
+              className="w-full h-auto rounded-md object-cover"
+            />
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-2">
+                <Badge className={`${conditionColors[condition]} capitalize`}>{condition}</Badge>
+                <Badge variant="secondary">{genre}</Badge>
+              </div>
+              <div className="flex items-center gap-2">
+                <Coins className="h-4 w-4 text-token" />
+                <span className="font-semibold text-token">{tokenValue} tokens</span>
+                {price && (
+                  <span className="text-sm text-muted-foreground">
+                    or KSH {(price * 130).toLocaleString()}
+                  </span>
+                )}
+              </div>
+              <div>
+                <h4 className="font-semibold mb-1">Description</h4>
+                <p className="text-sm text-muted-foreground whitespace-pre-line">
+                  {description?.trim()
+                    ? description
+                    : "No description provided for this book yet."}
+                </p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 

@@ -36,6 +36,47 @@ const Checkout = () => {
   const totalMoney = getTotalMoney();
   const totalMoneyKSH = totalMoney * 130;
 
+  // --- RECEIPT EMAIL DISPATCH TRIGGER ---
+  // Connects your frontend state data safely to your serverless api/receipt backend function
+  const dispatchReceiptEmail = async (params: {
+    invoiceNumber: string;
+    paymentType: string;
+    itemsList: any[];
+    displayTotal: string;
+  }) => {
+    if (!user || !user.email) return;
+
+    try {
+      // Create a clean readable list of book titles for the subject or template
+      const primaryBookTitle = params.itemsList.map(i => i.title).join(", ") || "Book Order";
+      const subtotalValue = params.paymentType === 'Token Balance' ? totalTokens : totalMoneyKSH;
+
+      const payload = {
+        customerName: user.user_metadata?.full_name || user.email.split('@')[0],
+        customerEmail: user.email,
+        bookTitle: primaryBookTitle,
+        bookPrice: subtotalValue,
+        taxAmount: 0, // Set custom metrics here if needed
+        shippingCost: 0,
+        totalAmount: subtotalValue,
+        paymentMethod: params.paymentType,
+        invoiceNumber: params.invoiceNumber,
+        purchaseDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+        receiptNote: "Thank you for supporting sustainable reading! Every exchange keeps your local community thriving."
+      };
+
+      await fetch('/api/receipt', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+    } catch (err) {
+      console.error("Receipt background transmission failed:", err);
+    }
+  };
+
   // --- 1. TOKEN PAYMENT HANDLER ---
   const handleTokenPayment = async () => {
     if (totalTokens > userTokens) {
@@ -66,11 +107,12 @@ const Checkout = () => {
 
       if (updateError) throw updateError;
 
-      // B. Record Transaction (FIXED: Saves book_id now)
+      // B. Record Transaction 
+      const tokenPurchasedItems = items.filter(item => item.paymentMethod === 'tokens');
       const { error: txError } = await supabase.from('transactions').insert(
-        items.filter(item => item.paymentMethod === 'tokens').map(item => ({
+        tokenPurchasedItems.map(item => ({
           user_id: user.id,
-          book_id: item.bookId, // <--- SAVES THE REAL BOOK ID
+          book_id: item.bookId, 
           transaction_type: 'purchase',
           payment_method: 'tokens',
           token_amount: item.tokenValue,
@@ -81,16 +123,26 @@ const Checkout = () => {
 
       if (txError) console.error("Transaction Record Error:", txError);
 
-      // C. Success State
+      // C. Success State & Receipt Meta Construction
       setUserTokens(newBalance);
       
       const receiptId = `TKN-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-      setReceipt({
+      const receiptPayload = {
         receiptNumber: receiptId,
         date: new Date().toLocaleString(),
-        items: [...items.filter(i => i.paymentMethod === 'tokens')],
+        items: [...tokenPurchasedItems],
         total: `${totalTokens} Tokens`,
         paymentMethod: 'Token Balance'
+      };
+
+      setReceipt(receiptPayload);
+
+      // TRIGGER RECEIPT ROUTER
+      await dispatchReceiptEmail({
+        invoiceNumber: receiptId,
+        paymentType: 'Token Balance',
+        itemsList: tokenPurchasedItems,
+        displayTotal: `${totalTokens} Tokens`
       });
 
       toast({ title: "Payment Successful!", description: `Used ${totalTokens} tokens` });
@@ -133,7 +185,7 @@ const Checkout = () => {
 
         if (data?.ResponseCode === "0") {
           toast({ title: "STK Push Sent", description: "Check your phone to enter PIN" });
-          // Note: We don't show receipt yet because we wait for callback confirmation
+          // Note: We don't dispatch emails here yet because we wait for instant webhook callback confirmation from Safaricom.
         } else {
           throw new Error(data?.CustomerMessage || "Failed to initiate M-Pesa");
         }
@@ -142,11 +194,13 @@ const Checkout = () => {
         // --- CARD PAYMENT (Simulated) ---
         await new Promise(resolve => setTimeout(resolve, 2000));
         
-        // Record Transaction (FIXED: Saves book_id now)
+        const cashPurchasedItems = items.filter(item => item.paymentMethod === 'money');
+        
+        // Record Transaction 
         await supabase.from('transactions').insert(
-          items.filter(item => item.paymentMethod === 'money').map(item => ({
+          cashPurchasedItems.map(item => ({
             user_id: user.id,
-            book_id: item.bookId, // <--- SAVES THE REAL BOOK ID
+            book_id: item.bookId, 
             transaction_type: 'purchase',
             payment_method: 'card',
             token_amount: 0,
@@ -156,12 +210,22 @@ const Checkout = () => {
         );
 
         const receiptId = `CRD-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-        setReceipt({
+        const receiptPayload = {
           receiptNumber: receiptId,
           date: new Date().toLocaleString(),
-          items: [...items.filter(i => i.paymentMethod === 'money')],
+          items: [...cashPurchasedItems],
           total: `KSH ${totalMoneyKSH.toLocaleString()}`,
           paymentMethod: 'Credit Card'
+        };
+
+        setReceipt(receiptPayload);
+
+        // TRIGGER RECEIPT ROUTER
+        await dispatchReceiptEmail({
+          invoiceNumber: receiptId,
+          paymentType: 'Credit Card',
+          itemsList: cashPurchasedItems,
+          displayTotal: `KSH ${totalMoneyKSH.toLocaleString()}`
         });
 
         toast({ title: "Success", description: "Card payment processed" });
@@ -188,7 +252,7 @@ const Checkout = () => {
             <CheckCircle2 className="h-10 w-10 text-green-600" />
           </div>
           <h1 className="text-2xl font-bold text-green-700">Payment Successful!</h1>
-          <p className="text-muted-foreground">Your transaction has been recorded.</p>
+          <p className="text-muted-foreground">Your transaction has been recorded and receipt emailed.</p>
         </div>
 
         <Receipt {...receipt} />

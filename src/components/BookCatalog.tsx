@@ -16,6 +16,7 @@ interface Book {
   price_ksh: number;
   image_url: string | null;
   genre: string;
+  description?: string | null;
 }
 
 const BookCatalog = () => {
@@ -136,6 +137,7 @@ const BookCatalog = () => {
                 image={book.image_url || "https://images.unsplash.com/photo-1544947950-fa07a98d237f?w=400&h=600&fit=crop"}
                 rating={4.5}
                 genre={book.genre}
+                description={book.description}
               />
             ))}
           </div>
